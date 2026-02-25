@@ -33,7 +33,7 @@ class L1Controller:
         self.latAccDem = torch.zeros((self.n, 1), device=self.device) # 横向加速度/ft/s^2
         self.bearing_error = torch.zeros((self.n, 1), device=self.device)
         self.WPcircle = torch.zeros((self.n, 1), dtype=torch.bool, device=self.device)
-    
+
     # prevent indecision in our turning by using our previous turn
     # decision if we are in a narrow angle band pointing away from the
     # target and the turn angle has changed sign
@@ -46,7 +46,7 @@ class L1Controller:
         # of Nu has also changed, which means we are
         # oscillating in our decision about which way to go
         self.Nu = self.last_Nu * mask1 + self.Nu * ~mask1
-    
+
     def loiter_radius(self, radius, eas2tas, TAS_dem):
         # prevent an insane loiter bank limit
         sanitized_bank_limit = min(max(self.loiter_bank_limit, 0), 89)
@@ -95,7 +95,7 @@ class L1Controller:
         AB_length = get_length(AB)
         mask1 = AB_length < 1e-6
         yaw = state[:, 5].reshape(-1, 1)
-        AB = AB * ~mask1 + torch.hstack((torch.cos(yaw), torch.sin(yaw))) * mask1
+        AB = AB * ~mask1 + torch.hstack((torch.cos(yaw), torch.sin(yaw)), device=self.device) * mask1
         AB_length = get_length(AB)
         AB = AB / AB_length
         # Calculate the NE position of the aircraft relative to WP A
@@ -107,14 +107,14 @@ class L1Controller:
         # Otherwise do normal L1 guidance
         WP_A_dist = get_length(A_air)
         alongTrackDist = get_vector_dot(A_air, AB)
-        mask1 = (WP_A_dist > self.L1_dist) & ((alongTrackDist / torch.max(WP_A_dist, torch.ones(self.n, 1))) < -0.7071)
+        mask1 = (WP_A_dist > self.L1_dist) & ((alongTrackDist / torch.max(WP_A_dist, torch.ones(self.n, 1), device=self.device)) < -0.7071)
         # Calc Nu to fly To WP A
         A_air_unit = A_air / get_length(A_air) # Unit vector from WP A to aircraft
         xtrackVel = get_cross_error(self.ground_speed, -A_air_unit) # Velocity across line
         ltrackVel = get_vector_dot(self.ground_speed, -A_air_unit) # Velocity along line
-        self.Nu = torch.atan2(xtrackVel, ltrackVel) * mask1
+        self.Nu = torch.atan2(xtrackVel, ltrackVel, device=self.device) * mask1
         # bearing (radians) from AC to L1 point
-        self.nav_bearing = torch.atan2(-A_air_unit[:, 1] , -A_air_unit[:, 0]).reshape(-1, 1) * mask1
+        self.nav_bearing = torch.atan2(-A_air_unit[:, 1] , -A_air_unit[:, 0], device=self.device).reshape(-1, 1) * mask1
         mask2 = (~mask1) & (alongTrackDist > (AB_length + groundSpeed * 3))
         # we have passed point B by 3 seconds. Head towards B
         # Calc Nu to fly To WP B
@@ -122,19 +122,19 @@ class L1Controller:
         B_air_unit = B_air / get_length(B_air) # Unit vector from WP B to aircraft
         xtrackVel = get_cross_error(self.ground_speed, -B_air_unit) # Velocity across line
         ltrackVel = get_vector_dot(self.ground_speed, -B_air_unit) # Velocity along line
-        self.Nu += torch.atan2(xtrackVel, ltrackVel) * mask2
+        self.Nu += torch.atan2(xtrackVel, ltrackVel, device=self.device) * mask2
         # bearing (radians) from AC to L1 point
-        self.nav_bearing += torch.atan2(-B_air_unit[:, 1], -B_air_unit[:, 0]).reshape(-1, 1) * mask2
+        self.nav_bearing += torch.atan2(-B_air_unit[:, 1], -B_air_unit[:, 0], device=self.device).reshape(-1, 1) * mask2
         mask3 = ~(mask1 | mask2)
         # Calc Nu to fly along AB line
         # Calculate Nu2 angle (angle of velocity vector relative to line connecting waypoints)
         xtrackVel = get_cross_error(self.ground_speed, AB) # Velocity cross track
         ltrackVel = get_vector_dot(self.ground_speed, AB) # Velocity along track
-        Nu2 = torch.atan2(xtrackVel,ltrackVel)
+        Nu2 = torch.atan2(xtrackVel,ltrackVel, device=self.device)
         # Calculate Nu1 angle (Angle to L1 reference point)
-        sine_Nu1 = self.crosstrack_error / torch.max(self.L1_dist, 0.1 * torch.ones((self.n, 1), device=self.device))
+        sine_Nu1 = self.crosstrack_error / torch.max(self.L1_dist, 0.1 * torch.ones((self.n, 1), device=self.device), device=self.device)
         # Limit sine of Nu1 to provide a controlled track capture angle of 45 deg
-        sine_Nu1 = torch.clamp(sine_Nu1, -0.7071, 0.7071)
+        sine_Nu1 = torch.clamp(sine_Nu1, -0.7071, 0.7071, device=self.device)
         Nu1 = torch.asin(sine_Nu1)
         # compute integral error component to converge to a crosstrack of zero when traveling
         # straight but reset it when disabled or if it changes. That allows for much easier
@@ -146,16 +146,16 @@ class L1Controller:
         Nu1 += self.L1_xtrack_i
         self.Nu += (Nu1 + Nu2) * mask3
         # bearing (radians) from AC to L1 point
-        self.nav_bearing += wrap_PI(torch.atan2(AB[:, 1], AB[:, 0]).reshape(-1, 1) + Nu1) * mask3
+        self.nav_bearing += wrap_PI(torch.atan2(AB[:, 1], AB[:, 0], device=self.device).reshape(-1, 1) + Nu1) * mask3
         self.prevent_indecision(state)
         self.last_Nu = self.Nu
         # Limit Nu to +-(pi/2)
-        self.Nu = torch.clamp(self.Nu, -torch.pi / 2, torch.pi / 2)
+        self.Nu = torch.clamp(self.Nu, -torch.pi / 2, torch.pi / 2, device=self.device)
         self.latAccDem = K_L1 * groundSpeed * groundSpeed / self.L1_dist * torch.sin(self.Nu)
         # Waypoint capture status is always false during waypoint following
         self.WPcircle = torch.zeros((self.n, 1), dtype=torch.bool, device=self.device)
         self.bearing_error = self.Nu # bearing error angle (radians), +ve to left of track
-    
+
     # update L1 control for loitering
     def update_loiter(self, center_WP, radius, loiter_direction, env, TAS_dem):
         # scale loiter radius with square of EAS2TAS to allow us to stay stable at high altitude
@@ -250,7 +250,7 @@ class L1Controller:
         # Limit Nu to +-pi
         self.Nu = torch.clamp(self.Nu, -torch.pi / 2, torch.pi / 2)
         self.latAccDem = 2 * torch.sin(self.Nu) * VomegaA
-    
+
     # update L1 control for level flight on current heading
     def update_level_flight(self, yaw):
         # copy to target_bearing and nav_bearing
@@ -262,7 +262,7 @@ class L1Controller:
         # Waypoint capture status is always false during heading hold
         self.WPcircle = torch.zeros((self.n, 1), dtype=torch.bool, device=self.device)
         self.latAccDem = torch.zeros((self.n, 1), device=self.device)
-    
+
     # return the bank angle needed to achieve tracking from the last update_*() operation
     def nav_roll(self, pitch):
         pitch = pitch.reshape(-1, 1)
