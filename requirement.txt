@@ -9,7 +9,7 @@ filelock
 fonttools
 gmpy2
 grpcio
-gym
+gymnasium
 idna
 Jinja2
 kiwisolver
