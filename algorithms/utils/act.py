@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import gym.spaces
+import gymnasium.spaces
 from .mlp import MLPLayer
 from .distributions import BetaShootBernoulli, Categorical, DiagGaussian, Bernoulli
 
@@ -50,7 +50,7 @@ class ACTLayer(nn.Module):
                 action_outs.append(Categorical(input_dim, discrete_dim, gain))
             action_outs.append(BetaShootBernoulli(input_dim, self._control_shoot_dim, gain))
             self.action_outs = nn.ModuleList(action_outs)
-        else: 
+        else:
             raise NotImplementedError(f"Unsupported action space type: {type(act_space)}!")
 
     def forward(self, x, deterministic=False, **kwargs):
@@ -79,7 +79,7 @@ class ACTLayer(nn.Module):
                 action_log_probs.append(action_log_prob)
             actions = torch.cat(actions, dim=-1)
             action_log_probs = torch.cat(action_log_probs, dim=-1).sum(dim=-1, keepdim=True)
-        
+
         elif self._shoot_action:
             actions = []
             action_log_probs = []

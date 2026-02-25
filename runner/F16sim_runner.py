@@ -94,9 +94,13 @@ class F16SimRunner(Runner):
                                      self.total_num_steps,
                                      self.num_env_steps,
                                      int(self.total_num_steps / (end - start))))
-
-                train_infos["average_episode_rewards"] = self.buffer.rewards.sum() / ((self.buffer.masks[1:] == False).sum() 
-                                                                                      + (self.buffer.bad_masks[1:] == False).sum())
+ 
+                denominator = ((self.buffer.masks[1:] == False).sum() + (self.buffer.bad_masks[1:] == False).sum())
+                if denominator != 0:
+                  train_infos["average_episode_rewards"] = self.buffer.rewards.sum() / denominator 
+                else:
+                  print("Divide by 0")
+                  train_infos["average_episode_rewards"] = 0
                 logging.info("average episode rewards is {}".format(train_infos["average_episode_rewards"]))
 
                 # if len(heading_turns_list):

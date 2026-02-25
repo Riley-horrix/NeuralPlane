@@ -2,7 +2,7 @@ import os
 import yaml
 import copy
 import math
-import gym.spaces
+import gymnasium.spaces
 import numpy as np
 import torch
 import torch.nn as nn

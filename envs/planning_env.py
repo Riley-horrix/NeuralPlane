@@ -1,6 +1,6 @@
 import sys
 import os
-import gym
+import gymnasium
 import numpy as np
 import torch
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -56,7 +56,7 @@ class PlanningEnv(BaseEnv):
             self.task = TrackingTask(self.config, self.n, self.device, random_seed)
         else:
             raise NotImplementedError
-    
+
     def low_level_obs(self, target_pitch, target_heading, target_vt):
         """
         Convert actions into the format of observation_space of low level controller.
@@ -140,7 +140,7 @@ class PlanningEnv(BaseEnv):
         obs = torch.hstack((obs, norm_lef))
         obs = torch.hstack((obs, eas2tas.reshape(-1, 1)))
         return obs
-    
+
     def step(self, action, render=False, count=0):
         self.reset()
         action = torch.clamp(action, -1, 1)
@@ -156,7 +156,7 @@ class PlanningEnv(BaseEnv):
             masks = torch.ones((self.n, 1), device=self.device)
             with torch.no_grad():
                 ego_actions, _, self.ego_rnn_states = self.controller(ego_obs, self.ego_rnn_states, masks, deterministic=True)
-            
+
             # step
             self.model.update(ego_actions)
             done = self.is_done.bool()

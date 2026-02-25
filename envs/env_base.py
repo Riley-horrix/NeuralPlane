@@ -3,7 +3,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import numpy as np
 import torch
-import gym
+import gymnasium as gym
 import random
 from models.model_base import BaseModel
 from tasks.task_base import BaseTask
@@ -44,7 +44,7 @@ class BaseEnv(gym.Env):
             self.seed(random_seed)
         self.model = BaseModel(self.config, self.n, self.device, random_seed)
         self.task = BaseTask(self.config, self.n, self.device, random_seed)
-    
+
     @property
     def observation_space(self):
         return self.task.observation_space
@@ -52,11 +52,11 @@ class BaseEnv(gym.Env):
     @property
     def action_space(self):
         return self.task.action_space
-    
+
     @property
     def num_observation(self):
         return self.task.num_observation
-    
+
     @property
     def num_actions(self):
         return self.task.num_actions
@@ -73,7 +73,7 @@ class BaseEnv(gym.Env):
         self.bad_done = self.bad_done + bad_done
         self.exceed_time_limit = self.exceed_time_limit + exceed_time_limit
         return self.is_done, self.bad_done, self.exceed_time_limit, info
-    
+
     def info(self):
         return {}
 
@@ -107,7 +107,7 @@ class BaseEnv(gym.Env):
         if render:
             self.render(count=count)
         return obs, reward, done, bad_done, exceed_time_limit, info
-    
+
     def render(self, count, filename='./tracks/F16SimRecording-'):
         """Renders the environment.
         The set of supported modes varies per environment. (And some

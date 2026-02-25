@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import os
-import gym
+import gymnasium
 import datetime
 import torch
 import random
@@ -40,10 +40,10 @@ class GymEnv:
 
     def close(self):
         self.env.close()
-    
+
     def seed(self, seed=None):
         return self.env.seed(seed)
-    
+
 
 class GymHybridEnv(GymEnv):
     def __init__(self, env) -> None:
@@ -53,7 +53,7 @@ class GymHybridEnv(GymEnv):
         self.continuous_dims = self.action_space[1].shape[0]
         self.action_shape = (self.discrete_dims+self.continuous_dims,)
         self.observation_space = self.env.observation_space
-    
+
     def reset(self):
         observation = self.env.reset()
         return np.array(observation).reshape((1, -1))

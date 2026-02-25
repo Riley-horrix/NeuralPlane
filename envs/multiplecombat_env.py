@@ -1,6 +1,6 @@
 import sys
 import os
-import gym
+import gymnasium
 import numpy as np
 import torch
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
@@ -62,7 +62,7 @@ class MultipleCombatEnv(BaseEnv):
     def update_recent_s(self, s):
         self.recent_s[1] = self.recent_s[0]
         self.recent_s[0] = s
-    
+
     def obs(self):
         # todo: 仅适用于1v1
         """
@@ -138,7 +138,7 @@ class MultipleCombatEnv(BaseEnv):
         obs = torch.hstack((obs, norm_R))
         obs = torch.hstack((obs, norm_side_flag))
         return obs
-    
+
     def reward(self):
         # s = self.recent_s[0]
         # last_s = self.recent_s[1]
@@ -178,7 +178,7 @@ class MultipleCombatEnv(BaseEnv):
         reward = torch.hstack((ego_reward.reshape(-1, 1), enm_reward.reshape(-1, 1)))
         reward = reward.reshape(-1)
         return reward
-    
+
     def reset(self):
         self.s = torch.zeros((self.n, self.num_states), device=self.device)  # state
         self.u = torch.zeros((self.n, self.num_controls), device=self.device)
@@ -202,7 +202,7 @@ class MultipleCombatEnv(BaseEnv):
         self.recent_s[1] = self.s
         self.recent_s[0] = self.s
         return obs
-    
+
     def reset_done_envs(self):
         """Only reset envs that are already done."""
         done = self.is_done.bool()
@@ -235,7 +235,7 @@ class MultipleCombatEnv(BaseEnv):
         self.bad_done[:] = 0
         self.exceed_time_limit[:] = 0
         self.recent_s[0] = self.s
-    
+
     def step(self, action):
         self.reset_done_envs()
 

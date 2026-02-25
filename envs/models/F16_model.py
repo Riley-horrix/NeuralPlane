@@ -47,7 +47,7 @@ class F16Model(BaseModel):
     def get_extended_state(self):
         x = torch.hstack((self.s, self.u))
         return self.dynamics.nlplant(x)
-    
+
     def update(self, action):
         action = torch.clamp(action, -1, 1)
         T = 0.9 * self.u[:, 0].reshape(-1, 1) + 0.1 * action[:, 0].reshape(-1, 1) * 0.225 * 76300 / 0.3048
@@ -65,59 +65,59 @@ class F16Model(BaseModel):
                         torch.hstack((self.s, self.u)),
                         torch.tensor([0., self.dt], device=self.device),
                         method=self.solver)[1, :, :self.num_states]
-    
+
     def get_state(self):
         return self.s
-    
+
     def get_control(self):
         return self.u
-    
+
     def get_position(self):
         return self.s[:, 0], self.s[:, 1], self.s[:, 2]
-    
+
     def get_ground_speed(self):
         es = self.get_extended_state()
         return es[:, 0], es[:, 1]
-    
+
     def get_climb_rate(self):
         es = self.get_extended_state()
         return es[:, 2]
-    
+
     def get_posture(self):
         return self.s[:, 3], self.s[:, 4], self.s[:, 5]
-    
+
     def get_euler_angular_velocity(self):
         es = self.get_extended_state()
         return es[:, 3], es[:, 4], es[:, 5]
-    
+
     def get_vt(self):
         return self.s[:, 6]
-    
+
     def get_TAS(self):
         return self.s[:, 6] + self.airspeed * torch.ones_like(self.s[:, 6])
-    
+
     def get_EAS(self):
         TAS = self.get_TAS()
         EAS2TAS = self.get_EAS2TAS()
         EAS = TAS / EAS2TAS
         return EAS
-    
+
     def get_AOA(self):
         return self.s[:, 7]
-    
+
     def get_AOS(self):
         return self.s[:, 8]
-    
+
     def get_angular_velocity(self):
         return self.s[:, 9], self.s[:, 10], self.s[:, 11]
-    
+
     def get_thrust(self):
         return self.u[:, 0]
-    
+
     def get_control_surface(self):
         return self.u[:, 1], self.u[:, 2], self.u[:, 3], self.u[:, 4]
 
-    
+
     def get_velocity(self):
         # 根据飞行状态计算三轴速度
         sina = torch.sin(self.s[:, 7])
@@ -128,7 +128,7 @@ class F16Model(BaseModel):
         vel_v = self.s[:, 6] * sinb # y轴速度
         vel_w = self.s[:, 6] * cosb * sina # z轴速度
         return vel_u, vel_v, vel_w
-    
+
     def get_acceleration(self):
         # 根据飞行状态计算三轴加速度
         xdot = self.get_extended_state()
@@ -146,13 +146,13 @@ class F16Model(BaseModel):
         ay = v_dot + self.s[:, 11] * vel_u - self.s[:, 9] * vel_w
         az = w_dot + self.s[:, 9] * vel_v - self.s[:, 10] * vel_u
         return ax, ay, az
-    
+
     def get_G(self):
         # 根据飞行状态计算过载
         nx_cg, ny_cg, nz_cg = self.get_accels()
         G = torch.sqrt(nx_cg ** 2 + ny_cg ** 2 + nz_cg ** 2)
         return G
-    
+
     def get_EAS2TAS(self):
         # 根据高度计算EAS2TAS
         alt = self.s[:, 2]
@@ -160,7 +160,7 @@ class F16Model(BaseModel):
         eas2tas = 1 / torch.pow(tfac, 4.14)
         eas2tas = torch.sqrt(eas2tas)
         return eas2tas
-    
+
     def get_accels(self):
         # 根据飞行状态计算三轴过载
         grav = 32.174

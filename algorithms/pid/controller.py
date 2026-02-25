@@ -46,7 +46,7 @@ class Controller:
         vt = TAS.reshape(-1, 1)
         self.speed_scaler = 1000 / (vt + 1e-8)
         self.speed_scaler = torch.clamp(self.speed_scaler, scale_min, scale_max)
-    
+
     def stabilize_roll(self, env):
         roll, pitch, yaw = env.model.get_posture()
         roll = roll.reshape(-1, 1)
@@ -58,22 +58,22 @@ class Controller:
         pitch = pitch.reshape(-1, 1)
         angle_err = wrap_PI(self.pitch_dem - pitch)
         self.el = self.pitch_controller.get_servo_out(angle_err, self.speed_scaler, env)
-    
+
     def stabilize_yaw(self, env):
         # yaw = state[:, 5].reshape(-1, 1)
         # angle_err = wrap_PI(self.yaw_dem - yaw)
         self.rud = self.yaw_controller.get_rate_out(self.yaw_rate_dem, self.speed_scaler, env)
         # self.rud = self.yaw_controller.get_servo_out(angle_err, self.speed_scaler, estate, eas2tas)
         # self.rud = self.yaw_controller.get_servo_out(self.speed_scaler, state, acceleration, eas2tas)
-    
+
     def stabilize(self, env):
         TAS = env.model.get_TAS()
         self.calc_speed_scaler(TAS)
         self.stabilize_roll(env)
         self.stabilize_pitch(env)
         self.stabilize_yaw(env)
-        # see if we should zero the attitude controller integrators. 
-    
+        # see if we should zero the attitude controller integrators.
+
     def cal_pitch_throttle(self, hgt_dem, TAS_dem, env):
         self.tecs_controller.update_pitch_throttle(hgt_dem, TAS_dem, env)
         self.pitch_dem = self.tecs_controller.pitch_dem
@@ -82,18 +82,19 @@ class Controller:
         self.STEdot_est = self.tecs_controller.STEdot_est
         self.SEBdot_dem = self.tecs_controller.SEBdot_dem
         self.SEBdot_est = self.tecs_controller.SEBdot_est
-    
+
     def update_waypoint(self, prev_WP, next_WP, dist_min, state, estate, eas2tas):
         vt = state[:, 6].reshape(-1, 1)
         # pitch = state[:, 4].reshape(-1, 1)
+        pitch = state[:, 4].reshape(-1, 1)
         self.l1_controller.update_waypoint(prev_WP, next_WP, dist_min, state, estate)
-        self.roll_dem = self.l1_controller.nav_roll(state)
+        self.roll_dem = self.l1_controller.nav_roll(pitch)
         self.roll_dem = torch.clamp(self.roll_dem, -self.roll_limit, self.roll_limit)
         # w = self.gravity * torch.tan(self.roll_dem) / vt * eas2tas
         # self.yaw_rate_dem = w * torch.cos(self.roll_dem) / torch.cos(pitch)
         self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt * eas2tas
         # self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt * eas2tas
-    
+
     def update_loiter(self, center_WP, radius, loiter_direction, env):
         TAS = env.model.get_TAS()
         roll, pitch, yaw = env.model.get_posture()
@@ -110,7 +111,7 @@ class Controller:
         # self.yaw_rate_dem = (Q * torch.sin(self.roll_dem) + R * torch.cos(self.roll_dem)) / torch.cos(pitch)
         self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt * eas2tas
         # self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt
-    
+
     def update_heading_hold(self, navigation_heading, env):
         TAS = env.model.get_TAS()
         vt = TAS.reshape(-1, 1)
@@ -123,7 +124,7 @@ class Controller:
         # self.yaw_rate_dem = w * torch.cos(self.roll_dem) / torch.cos(pitch)
         self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt * eas2tas
         # self.yaw_rate_dem = self.gravity * torch.tan(self.roll_dem) / vt
-    
+
     def update_level_flight(self, env):
         TAS = env.model.get_TAS()
         vt = TAS.reshape(-1, 1)

@@ -1,7 +1,7 @@
 import torch
 import random
 import numpy as np
-import gym
+import gymnasium as gym
 from abc import ABC, abstractmethod
 
 
@@ -22,7 +22,7 @@ class BaseTask(ABC):
 
         self.load_observation_space()
         self.load_action_space()
-        
+
         if random_seed is not None:
             self.seed(random_seed)
 
@@ -41,7 +41,7 @@ class BaseTask(ABC):
         self.action_space = gym.spaces.Box(low=-np.inf,
                                            high=np.inf,
                                            shape=(self.num_actions, ))
-    
+
     def seed(self, random_seed):
         torch.manual_seed(random_seed)
         torch.cuda.manual_seed_all(random_seed)
@@ -56,7 +56,7 @@ class BaseTask(ABC):
             env: environment instance
         """
         raise NotImplementedError
-    
+
     def get_reward(self, env):
         """
         Aggregate reward functions

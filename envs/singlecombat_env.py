@@ -1,6 +1,6 @@
 import sys
 import os
-import gym
+import gymnasium
 import numpy as np
 import torch
 import pdb
@@ -60,7 +60,7 @@ class SingleCombatEnv(BaseEnv):
     def update_recent_s(self, s):
         self.recent_s[1] = self.recent_s[0]
         self.recent_s[0] = s
-    
+
     def obs(self):
         # todo: 仅适用于1v1
         """
@@ -136,7 +136,7 @@ class SingleCombatEnv(BaseEnv):
         obs = torch.hstack((obs, norm_R))
         obs = torch.hstack((obs, norm_side_flag))
         return obs
-    
+
     def reward(self):
         # s = self.recent_s[0]
         # last_s = self.recent_s[1]
@@ -179,7 +179,7 @@ class SingleCombatEnv(BaseEnv):
         if contain_inf:
             pdb.set_trace()
         return reward
-    
+
     def reset(self):
         self.s = torch.zeros((self.n, self.num_states), device=self.device)  # state
         self.u = torch.zeros((self.n, self.num_controls), device=self.device)
@@ -203,7 +203,7 @@ class SingleCombatEnv(BaseEnv):
         self.recent_s[1] = self.s
         self.recent_s[0] = self.s
         return obs
-    
+
     def reset_done_envs(self):
         """Only reset envs that are already done."""
         done = self.is_done.bool()
@@ -236,7 +236,7 @@ class SingleCombatEnv(BaseEnv):
         self.bad_done[:] = 0
         self.exceed_time_limit[:] = 0
         self.recent_s[0] = self.s
-    
+
     def step(self, action):
         # todo: 仅适用于1v1
         self.reset_done_envs()
@@ -272,7 +272,7 @@ class SingleCombatEnv(BaseEnv):
 
         self.update_recent_s(self.s)
         return obs, reward, done, bad_done, exceed_time_limit, info
-    
+
     def render(self, count, filepath='./F16SimRecording.txt.acmi'):
         # todo: 仅适合1v1
         """Renders the environment.
