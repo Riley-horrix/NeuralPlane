@@ -31,4 +31,4 @@ class PositionReward(BaseRewardFunction):
         reward_epos = -delta_epos ** 2
         reward_altitude = -delta_altitude ** 2
         reward_target = reward_npos + reward_epos + reward_altitude
-        return 0.1 * reward_target
+        return 0.3 * reward_target
