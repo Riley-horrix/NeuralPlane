@@ -34,7 +34,7 @@ class TrackingTask(BaseTask):
             PositionReward(self.config),
             EventDrivenReward(self.config),
         ]
-        
+
         self.termination_conditions = [
             Overload(self.config),
             LowAltitude(self.config),
@@ -69,7 +69,7 @@ class TrackingTask(BaseTask):
         self.target_npos[reset] = npos[reset] + delta_npos
         self.target_epos[reset] = epos[reset] + delta_epos
         self.target_altitude[reset] = altitude[reset] + delta_altitude
-    
+
     def get_obs(self, env):
         """
         Convert simulation states into the format of observation_space.

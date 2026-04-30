@@ -26,8 +26,8 @@ color: Red
 model: f16
 
 # target config
-max_distance: 4000 # feet
-min_distance: 2000  # feet
+max_distance: 6000 # feet
+min_distance: 4000  # feet
 max_check_interval: 2500                 # step
 min_check_interval: 300
 
