@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from task_base import BaseTask
 from reward_functions.position_reward import PositionReward
 from reward_functions.event_driven_reward import EventDrivenReward
+from reward_functions.time_driven_reward import TimeDrivenReward
 from termination_conditions.low_altitude import LowAltitude
 from termination_conditions.overload import Overload
 from termination_conditions.high_speed import HighSpeed
@@ -33,6 +34,7 @@ class TrackingTask(BaseTask):
         self.reward_functions = [
             PositionReward(self.config),
             EventDrivenReward(self.config),
+            TimeDrivenReward(self.config)
         ]
 
         self.termination_conditions = [
