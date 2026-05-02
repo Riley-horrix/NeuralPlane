@@ -32,5 +32,5 @@ class LowSpeed(BaseTerminationCondition):
         exceed_time_limit = torch.zeros_like(bad_done)
         if torch.any(bad_done):
             self.log(f'speed is too low!')
-            print(torch.sum(bad_done), 'speed is too low!')
+            # print(torch.sum(bad_done), 'speed is too low!')
         return bad_done, done, exceed_time_limit, info

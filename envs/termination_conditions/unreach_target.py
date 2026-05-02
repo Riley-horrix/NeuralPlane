@@ -16,7 +16,7 @@ class UnreachTarget(BaseTerminationCondition):
         self.device = torch.device(device)
         self.max_check_interval = getattr(config, 'max_check_interval', 2500)
         self.min_check_interval = getattr(config, 'min_check_interval', 300)
-    
+
     def get_termination(self, task, env, info={}):
         """
         Return whether the episode should terminate.
@@ -48,8 +48,8 @@ class UnreachTarget(BaseTerminationCondition):
         exceed_time_limit = torch.zeros_like(done)
         if torch.any(bad_done):
             self.log(f'unreach target!')
-            print(torch.sum(bad_done), 'unreach target!')
+            # print(torch.sum(bad_done), 'unreach target!')
         if torch.any(done):
             self.log(f'reset target!')
-            print(torch.sum(done), 'reset target!')
+            # print(torch.sum(done), 'reset target!')
         return bad_done, done, exceed_time_limit, info
