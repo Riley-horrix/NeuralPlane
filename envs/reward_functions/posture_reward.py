@@ -37,7 +37,7 @@ class PostureReward(BaseRewardFunction):
         reward_heading = -torch.abs(delta_heading)
         reward_vt = -torch.abs(delta_vt)
 
-        # Multiply by 10 so the agent actually feels the penalty
-        reward_target = 10.0 * (reward_pitch + reward_heading + reward_vt)
+        # Multiply by 5 so the agent actually feels the penalty
+        reward_target = 5.0 * (reward_pitch + reward_heading + reward_vt)
 
         return reward_target

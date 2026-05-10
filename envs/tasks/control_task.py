@@ -4,6 +4,7 @@ import torch
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from task_base import BaseTask
+from reward_functions.time_driven_reward import TimeDrivenReward
 from reward_functions.posture_reward import PostureReward
 from reward_functions.event_driven_reward import EventDrivenReward
 from termination_conditions.low_altitude import LowAltitude
@@ -34,6 +35,7 @@ class ControlTask(BaseTask):
         self.reward_functions = [
             PostureReward(self.config),
             EventDrivenReward(self.config),
+            TimeDrivenReward(self.config)
         ]
 
         self.termination_conditions = [
