@@ -35,10 +35,10 @@ class ControlTask(BaseTask):
             PostureReward(self.config),
             EventDrivenReward(self.config),
         ]
-        
+
         self.termination_conditions = [
             Overload(self.config),
-            LowAltitude(self.config),
+            # LowAltitude(self.config),
             HighSpeed(self.config),
             LowSpeed(self.config),
             ExtremeState(self.config),
@@ -66,7 +66,7 @@ class ControlTask(BaseTask):
         self.target_pitch[reset] = wrap_PI(pitch[reset] + delta_pitch)
         self.target_heading[reset] = wrap_PI(heading[reset] + delta_heading)
         self.target_vt[reset] = vt[reset] + delta_vt
-    
+
     def get_obs(self, env):
         """
         Convert simulation states into the format of observation_space.

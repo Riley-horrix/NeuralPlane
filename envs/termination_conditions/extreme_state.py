@@ -4,6 +4,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from termination_condition_base import BaseTerminationCondition
 import torch
 
+from src.utils.config import should_log
 
 class ExtremeState(BaseTerminationCondition):
     """
@@ -36,7 +37,7 @@ class ExtremeState(BaseTerminationCondition):
         bad_done = mask1 | mask2
         done = torch.zeros_like(bad_done)
         exceed_time_limit = torch.zeros_like(bad_done)
-        if torch.any(bad_done):
+        if should_log and torch.any(bad_done):
             self.log(f'extreme state!')
-            # print(torch.sum(bad_done), 'extreme state!')
+            print(torch.sum(bad_done), 'extreme state!')
         return bad_done, done, exceed_time_limit, info

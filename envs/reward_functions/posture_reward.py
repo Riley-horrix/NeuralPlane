@@ -25,11 +25,19 @@ class PostureReward(BaseRewardFunction):
         """
         roll, pitch, heading = env.model.get_posture()
         vt = env.model.get_vt()
-        delta_pitch = wrap_PI(pitch - task.target_pitch) / torch.pi
-        delta_heading = wrap_PI(heading - task.target_heading) / torch.pi
-        delta_vt = (vt - task.target_vt) * 0.3048 / 340
-        reward_pitch = -delta_pitch ** 2
-        reward_heading = -delta_heading ** 2
-        reward_vt = -delta_vt ** 2
-        reward_target = reward_pitch + reward_heading + reward_vt
+
+        # Keep it in radians, don't divide by pi yet
+        delta_pitch = wrap_PI(pitch - task.target_pitch)
+        delta_heading = wrap_PI(heading - task.target_heading)
+        # Normalize velocity error (e.g. 100 ft/s error = 1.0)
+        delta_vt = (vt - task.target_vt) / 100.0
+
+        # Use absolute error and multiply by a large scaling factor
+        reward_pitch = -torch.abs(delta_pitch)
+        reward_heading = -torch.abs(delta_heading)
+        reward_vt = -torch.abs(delta_vt)
+
+        # Multiply by 10 so the agent actually feels the penalty
+        reward_target = 10.0 * (reward_pitch + reward_heading + reward_vt)
+
         return reward_target
