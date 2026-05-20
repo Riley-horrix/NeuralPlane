@@ -12,7 +12,7 @@ class TimeDrivenReward(BaseRewardFunction):
     def __init__(self, config):
         super().__init__(config)
 
-        self.reward = 1.0
+        self.reward = 10.0
 
     def get_reward(self, task, env):
         """
