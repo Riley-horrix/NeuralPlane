@@ -6,6 +6,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from task_base import BaseTask
 from reward_functions.dallyverkampen_reward import DallyVerKampenReward
 from termination_conditions.unreach_posture import UnreachPosture
+from termination_conditions.overload import Overload
+from termination_conditions.high_speed import HighSpeed
+from termination_conditions.low_speed import LowSpeed
+from termination_conditions.extreme_state import ExtremeState
 from utils.utils import wrap_PI
 
 class AttitudeTask(BaseTask):
@@ -33,6 +37,10 @@ class AttitudeTask(BaseTask):
         ]
 
         self.termination_conditions = [
+            Overload(self.config),
+            HighSpeed(self.config),
+            LowSpeed(self.config),
+            ExtremeState(self.config),
             UnreachPosture(self.config, device)
         ]
 
