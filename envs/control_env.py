@@ -7,7 +7,7 @@ from models.UAV_model import UAVModel
 from tasks.heading_task import HeadingTask
 from tasks.control_task import ControlTask
 from tasks.tracking_task import TrackingTask
-
+from tasks.attitude_task import AttitudeTask
 
 class ControlEnv(BaseEnv):
     """
@@ -15,7 +15,7 @@ class ControlEnv(BaseEnv):
     """
     def __init__(self, num_envs=1, config='heading', model='F16', random_seed=None, device="cuda:0"):
         super().__init__(num_envs, config, model, random_seed, device)
-    
+
     def load(self, random_seed, config, model):
         if random_seed is not None:
             self.seed(random_seed)
@@ -31,6 +31,7 @@ class ControlEnv(BaseEnv):
             self.task = ControlTask(self.config, self.n, self.device, random_seed)
         elif config == 'tracking':
             self.task = TrackingTask(self.config, self.n, self.device, random_seed)
+        elif config == 'attitude':
+            self.task = AttitudeTask(self.config, self.n, self.device, random_seed)
         else:
             raise NotImplementedError
-    
