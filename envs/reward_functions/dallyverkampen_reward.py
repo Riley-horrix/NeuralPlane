@@ -12,14 +12,15 @@ class DallyVerKampenReward(BaseRewardFunction):
     """
     Measures the difference between the current posture and the target posture,
     incorporating clipped bounding, aerodynamic safety penalties, and a survival bonus.
+    Strictly follows the attitude tracking math (beta, pitch, roll) from Dally & van Kampen (2022).
     """
     def __init__(self, config):
         super().__init__(config)
 
-        # 1. Cost weights for tracking errors
-        self.cost_pitch = getattr(self.config, 'cost_pitch', 2.0)
-        self.cost_heading = getattr(self.config, 'cost_heading', 2.0)
-        self.cost_vt = getattr(self.config, 'cost_vt', 1.0)
+        # 1. Cost weights for tracking errors based on the paper's c^{att} vector: 6/pi * [4, 1, 1]
+        self.cost_beta = getattr(self.config, 'cost_beta', (6.0 / math.pi) * 4.0)
+        self.cost_pitch = getattr(self.config, 'cost_pitch', (6.0 / math.pi) * 1.0)
+        self.cost_roll = getattr(self.config, 'cost_roll', (6.0 / math.pi) * 1.0)
 
         # 2. Angle of Attack (AoA) limits for F-16 (converted to radians)
         # Warning starts at 15 deg, hard stall limit is ~25 deg
@@ -35,29 +36,28 @@ class DallyVerKampenReward(BaseRewardFunction):
             (tensor): reward
         """
         # Extract current states
-        roll, pitch, heading = env.model.get_posture()
-        vt = env.model.get_vt()
+        roll, pitch, _ = env.model.get_posture()
+        beta = env.model.get_AOS()
         aoa = env.model.get_AOA()
 
-        # Calculate raw errors
-        delta_pitch = wrap_PI(pitch - task.target_pitch)
-        delta_heading = wrap_PI(heading - task.target_heading)
-        # Normalize velocity error (e.g., 100 ft/s error = 1.0)
-        delta_vt = (vt - task.target_vt) / 100.0
+        # Calculate raw errors (Target - Actual)
+        delta_beta = wrap_PI(task.target_beta - beta)
+        delta_pitch = wrap_PI(task.target_pitch - pitch)
+        delta_roll = wrap_PI(task.target_roll - roll)
 
         # Apply cost weights and absolute value
+        weighted_beta_err = self.cost_beta * torch.abs(delta_beta)
         weighted_pitch_err = self.cost_pitch * torch.abs(delta_pitch)
-        weighted_heading_err = self.cost_heading * torch.abs(delta_heading)
-        weighted_vt_err = self.cost_vt * torch.abs(delta_vt)
+        weighted_roll_err = self.cost_roll * torch.abs(delta_roll)
 
         # Clip the errors. We negate them and clamp between -1.0 and 0.0
         # This bounds the maximum penalty per step, stopping exploding Q-values
+        clip_beta = torch.clamp(-weighted_beta_err, min=-1.0, max=0.0)
         clip_pitch = torch.clamp(-weighted_pitch_err, min=-1.0, max=0.0)
-        clip_heading = torch.clamp(-weighted_heading_err, min=-1.0, max=0.0)
-        clip_vt = torch.clamp(-weighted_vt_err, min=-1.0, max=0.0)
+        clip_roll = torch.clamp(-weighted_roll_err, min=-1.0, max=0.0)
 
-        # Tracking reward is now strictly bounded between -3.0 and 0.0
-        tracking_reward = clip_pitch + clip_heading + clip_vt
+        # The paper divides the L1 norm by 3, so the tracking reward is bounded between -1.0 and 0.0
+        tracking_reward = (clip_beta + clip_pitch + clip_roll) / 3.0
 
         # Exponentially penalize the agent if it pulls too much pitch and approaches a stall
         aoa_penalty = torch.zeros_like(aoa)
@@ -71,10 +71,10 @@ class DallyVerKampenReward(BaseRewardFunction):
         if violation_mask.any():
             aoa_penalty[violation_mask] = -5.0 * ((abs_aoa[violation_mask] - self.aoa_warning_rad) / (self.aoa_max_rad - self.aoa_warning_rad))**2
 
-        # Because tracking_reward is [-3.0, 0.0], we add a flat +3.0.
-        # This shifts the base tracking step reward to [0.0, +3.0].
+        # Because tracking_reward is [-1.0, 0.0], we add a flat +1.0.
+        # This shifts the base tracking step reward to [0.0, +1.0].
         # By making safe flight mathematically positive, we eliminate the "suicide problem".
-        survival_bonus = 3.0
+        survival_bonus = 1.0
 
         # Final summation
         total_reward = survival_bonus + tracking_reward + aoa_penalty
