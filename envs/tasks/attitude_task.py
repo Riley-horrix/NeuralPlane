@@ -27,6 +27,8 @@ class AttitudeTask(BaseTask):
 
         self.target_pitch = torch.zeros(self.n, device=self.device)
         self.target_heading = torch.zeros(self.n, device=self.device)
+        self.target_vt = torch.zeros(self.n, device=self.device)
+
         self.max_pitch_increment = getattr(self.config, 'max_pitch_increment', 0.3)
         self.max_heading_increment = getattr(self.config, 'max_heading_increment', 0.3)
         self.max_velocities_u_increment = getattr(self.config, 'max_velocities_u_increment', 100)
@@ -52,12 +54,15 @@ class AttitudeTask(BaseTask):
 
         delta_pitch = 2 * (torch.rand(size, device=self.device) - 0.5) * self.max_pitch_increment
         delta_heading = 2 * (torch.rand(size, device=self.device) - 0.5) * self.max_heading_increment
+        delta_vt = 2 * (torch.rand(size, device=self.device) - 0.5) * self.max_velocities_u_increment
         # delta_pitch = 2.5
         # delta_heading = 0
         # delta_vt = 0
 
         self.target_pitch[reset] = wrap_PI(pitch[reset] + delta_pitch)
         self.target_heading[reset] = wrap_PI(heading[reset] + delta_heading)
+        self.target_vt[reset] = vt[reset] + delta_vt
+
 
     # def get_obs(self, env):
     #     """
