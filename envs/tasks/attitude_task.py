@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from task_base import BaseTask
 from reward_functions.dallyverkampen_reward import DallyVerKampenReward
+from reward_functions.event_driven_reward import EventBasedReward
 from termination_conditions.unreach_posture import UnreachPosture
 from termination_conditions.overload import Overload
 from termination_conditions.high_speed import HighSpeed
@@ -33,7 +34,8 @@ class AttitudeTask(BaseTask):
         self.noise_scale = getattr(self.config, 'noise_scale', 0.01)
 
         self.reward_functions = [
-            DallyVerKampenReward(self.config)
+            DallyVerKampenReward(self.config),
+            EventBasedReward(self.config)
         ]
 
         self.termination_conditions = [
@@ -70,66 +72,59 @@ class AttitudeTask(BaseTask):
 
     def get_obs(self, env):
         """
-        Convert simulation states into the 14-dimensional format of the inner-loop agent.
+        Convert simulation states into a clean 11-dimensional format for 4-DoF control.
 
-        observation(dim 14):
+        observation(dim 11):
             0. weighted_error_beta
             1. weighted_error_pitch
             2. weighted_error_roll
-            3. ego_el (elevator deflection)
-            4. ego_ail (aileron deflection)
-            5. ego_rud (rudder deflection)
-            6. ego_P (roll rate)
-            7. ego_Q (pitch rate)
-            8. ego_R (yaw rate)
-            9. vt (velocity)
-            10. sin_alpha (angle of attack)
-            11. cos_alpha (angle of attack)
-            12. EAS2TAS
-            13. delta_vt_fts (velocity error in ft/s)
+            3. weighted_error_vel
+            4. norm_el  (elevator deflection)
+            5. norm_ail (aileron deflection)
+            6. norm_rud (rudder deflection)
+            7. norm_thr (throttle setting)
+            8. ego_P    (roll rate)
+            9. ego_Q    (pitch rate)
+            10. ego_R   (yaw rate)
         """
         roll, pitch, _ = env.model.get_posture()
-        alpha = env.model.get_AOA()
         beta = env.model.get_AOS()
         P, Q, R = env.model.get_angular_velocity()
-        el, ail, rud, _ = env.model.get_control_surface()
 
+        # Unpack all 4 control surface signals from the underlying F-16 flight engine
+        el, ail, rud, thr = env.model.get_control_surface()
         vt = env.model.get_vt()
-        norm_vt = vt.reshape(-1, 1) * 0.3048 / 340
-        delta_vt_fts = vt - self.target_vt
-        eas2tas = env.model.get_EAS2TAS()
 
+        # Calculate tracking states
         e_beta = wrap_PI(self.target_beta - beta)
         e_pitch = wrap_PI(self.target_pitch - pitch)
         e_roll = wrap_PI(self.target_roll - roll)
+        delta_vt_fts = vt - self.target_vt
 
-        c_beta = (6.0 / torch.pi) * 4.0
-        c_pitch = (6.0 / torch.pi) * 1.0
-        c_roll = (6.0 / torch.pi) * 1.0
+        # Compute weighted states
+        weighted_e_beta = (e_beta * (6.0 / torch.pi) * 4.0).reshape(-1, 1)
+        weighted_e_pitch = (e_pitch * (6.0 / torch.pi) * 1.0).reshape(-1, 1)
+        weighted_e_roll = (e_roll * (6.0 / torch.pi) * 1.0).reshape(-1, 1)
 
-        weighted_e_beta = (e_beta * c_beta).reshape(-1, 1)
-        weighted_e_pitch = (e_pitch * c_pitch).reshape(-1, 1)
-        weighted_e_roll = (e_roll * c_roll).reshape(-1, 1)
+        # Use your explicit max error bounds parameter to scale the state observation cleanly
+        weighted_error_vel = (delta_vt_fts * ((6.0 / torch.pi) * 0.5) / self.max_velocities_u_increment).reshape(-1, 1)
 
+        # Normalize physical actuation ranges to a consistent scale of [-1.0, 1.0]
         norm_el = el.reshape(-1, 1) / 45.0
         norm_ail = ail.reshape(-1, 1) / 45.0
         norm_rud = rud.reshape(-1, 1) / 45.0
+        norm_thr = (thr.reshape(-1, 1) * 2.0) - 1.0  # Maps raw [0.0, 1.0] throttle to [-1.0, 1.0]
 
+        # Kinematic dampening tracking states
         norm_P = P.reshape(-1, 1)
         norm_Q = Q.reshape(-1, 1)
         norm_R = R.reshape(-1, 1)
 
-        alpha_sin = torch.sin(alpha.reshape(-1, 1))
-        alpha_cos = torch.cos(alpha.reshape(-1, 1))
-
+        # Stacks into a unified 11-dimensional tensor
         obs = torch.hstack((
-            weighted_e_beta, weighted_e_pitch, weighted_e_roll,
-            norm_el, norm_ail, norm_rud,
-            norm_P, norm_Q, norm_R,
-            norm_vt,
-            alpha_sin, alpha_cos,
-            eas2tas.reshape(-1, 1),
-            delta_vt_fts.reshape(-1, 1)
+            weighted_e_beta, weighted_e_pitch, weighted_e_roll, weighted_error_vel,
+            norm_el, norm_ail, norm_rud, norm_thr,
+            norm_P, norm_Q, norm_R
         ))
 
         return obs + torch.randn_like(obs) * self.noise_scale

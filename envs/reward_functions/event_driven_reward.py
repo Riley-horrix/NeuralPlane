@@ -8,8 +8,9 @@ class EventDrivenReward(BaseRewardFunction):
     """
     EventDrivenReward
     Achieve reward when the following event happens:
-    - Done: +50
-    - Bad_done: -50
+    - Done: +1
+    - Bad_done: -1
+    - Exceed_time_limit: +1
     """
     def __init__(self, config):
         super().__init__(config)
@@ -25,5 +26,5 @@ class EventDrivenReward(BaseRewardFunction):
         Returns:
             (tensor): reward
         """
-        reward = -50 * env.bad_done + 50 * env.is_done
+        reward = -5 * env.bad_done + 5 * env.is_done + 5 * env.exceed_time_limit
         return reward
