@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from task_base import BaseTask
 from reward_functions.dallyverkampen_reward import DallyVerKampenReward
-from reward_functions.event_driven_reward import EventDrivenReward
+from reward_functions.inner_event_driven_reward import InnerEventDrivenReward
 from termination_conditions.unreach_posture import UnreachPosture
 from termination_conditions.overload import Overload
 from termination_conditions.high_speed import HighSpeed
@@ -35,7 +35,7 @@ class AttitudeTask(BaseTask):
 
         self.reward_functions = [
             DallyVerKampenReward(self.config),
-            EventDrivenReward(self.config)
+            InnerEventDrivenReward(self.config)
         ]
 
         self.termination_conditions = [

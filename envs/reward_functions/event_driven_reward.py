@@ -6,25 +6,18 @@ from reward_function_base import BaseRewardFunction
 
 class EventDrivenReward(BaseRewardFunction):
     """
-    EventDrivenReward
-    Achieve reward when the following event happens:
-    - Done: +1
-    - Bad_done: -1
-    - Exceed_time_limit: +1
+    Provides massive, unambiguous terminal signals so the Critic clearly understands
+    the ultimate goal (Success) vs. the ultimate failure (Crash/Stall).
     """
     def __init__(self, config):
         super().__init__(config)
 
     def get_reward(self, task, env):
-        """
-        Reward is the sum of all the events.
+        # Must cast to float so PyTorch can do the math
+        is_done = env.is_done.float()
+        bad_done = env.bad_done.float()
 
-        Args:
-            task: task instance
-            env: environment instance
+        # Massive terminal spikes
+        reward = (-100.0 * bad_done) + (100.0 * is_done)
 
-        Returns:
-            (tensor): reward
-        """
-        reward = -5 * env.bad_done + 5 * env.is_done
         return reward

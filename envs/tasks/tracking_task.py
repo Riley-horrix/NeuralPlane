@@ -77,9 +77,9 @@ class TrackingTask(BaseTask):
         Convert simulation states into the format of observation_space.
 
         observation(dim 22):
-            0. ego_delta_npos      (unit: km)
-            1. ego_delta_epos       (unit km)
-            2. ego_delta_altitude            (unit: km)
+            0. ego_norm_distance       (unit: km, scaled)
+            1. ego_azimuth_error       (unit: rad, scaled [-1, 1])
+            2. ego_elevation_error     (unit: rad, scaled [-1, 1])
             3. ego_altitude            (unit: 5km)
             4. ego_roll_sin
             5. ego_roll_cos
@@ -111,15 +111,33 @@ class TrackingTask(BaseTask):
         el, ail, rud, lef = env.model.get_control_surface()
         eas2tas = env.model.get_EAS2TAS()
 
-        norm_delta_npos = (npos - self.target_npos).reshape(-1, 1) * 0.3048 / 1000
-        norm_delta_epos = (epos - self.target_epos).reshape(-1, 1) * 0.3048 / 1000
-        norm_delta_altitude = (altitude - self.target_altitude).reshape(-1, 1) * 0.3048 / 1000
+        # ---------------- NEW EGO-RELATIVE NAVIGATION ----------------
+        delta_n = self.target_npos - npos
+        delta_e = self.target_epos - epos
+        delta_alt = self.target_altitude - altitude
+
+        # 0. 3D Distance (Converted to km)
+        ground_dist = torch.sqrt(delta_n**2 + delta_e**2)
+        dist_3d = torch.sqrt(ground_dist**2 + delta_alt**2)
+        norm_distance = (dist_3d.reshape(-1, 1) * 0.3048) / 1000.0
+
+        # 1. Azimuth Error (Left/Right of the nose)
+        # torch.atan2(y, x) -> East is y, North is x
+        target_azimuth = torch.atan2(delta_e, delta_n)
+        azimuth_error = wrap_PI(target_azimuth - heading).reshape(-1, 1)
+        norm_azimuth_error = azimuth_error / torch.pi  # Scales -180 to 180 degrees into [-1.0, 1.0]
+
+        # 2. Elevation Error (Above/Below the nose)
+        target_elevation = torch.atan2(delta_alt, ground_dist)
+        elevation_error = wrap_PI(target_elevation - pitch).reshape(-1, 1)
+        norm_elevation_error = elevation_error / (torch.pi / 2.0) # Scales -90 to 90 degrees into [-1.0, 1.0]
+        # -------------------------------------------------------------
+
         norm_altitude = altitude.reshape(-1, 1) * 0.3048 / 5000
         roll_sin = torch.sin(roll.reshape(-1, 1))
         roll_cos = torch.cos(roll.reshape(-1, 1))
         pitch_sin = torch.sin(pitch.reshape(-1, 1))
         pitch_cos = torch.cos(pitch.reshape(-1, 1))
-        # norm_vt = vt.reshape(-1, 1) * 0.3048 / 340
         norm_EAS = EAS.reshape(-1, 1) * 0.3048 / 340
         alpha_sin = torch.sin(alpha.reshape(-1, 1))
         alpha_cos = torch.cos(alpha.reshape(-1, 1))
@@ -133,8 +151,11 @@ class TrackingTask(BaseTask):
         norm_ail = ail.reshape(-1, 1) / 45
         norm_rud = rud.reshape(-1, 1) / 45
         norm_lef = lef.reshape(-1, 1) / 45
-        obs = torch.hstack((norm_delta_npos, norm_delta_epos))
-        obs = torch.hstack((obs, norm_delta_altitude))
+
+        # Stack the new ego-relative target metrics first
+        obs = torch.hstack((norm_distance, norm_azimuth_error, norm_elevation_error))
+
+        # Stack the rest identically to preserve dim 22
         obs = torch.hstack((obs, norm_altitude))
         obs = torch.hstack((obs, roll_sin))
         obs = torch.hstack((obs, roll_cos))
@@ -154,4 +175,5 @@ class TrackingTask(BaseTask):
         obs = torch.hstack((obs, norm_rud))
         obs = torch.hstack((obs, norm_lef))
         obs = torch.hstack((obs, eas2tas.reshape(-1, 1)))
+
         return obs + torch.randn_like(obs) * self.noise_scale

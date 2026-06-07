@@ -67,17 +67,25 @@ class DallyVerKampenReward(BaseRewardFunction):
         # The paper divides the L1 norm by 4, so the tracking reward is bounded between -1.0 and 0.0
         tracking_reward = (clip_beta + clip_pitch + clip_roll + clip_vt) / 4.0
 
-        # Exponentially penalize the agent if it pulls too much pitch and approaches a stall
+        # F-16 Asymmetric AoA Limits (in radians)
+        pos_warning = math.radians(15.0)
+        pos_max = math.radians(25.0)
+
+        neg_warning = math.radians(-5.0)
+        neg_max = math.radians(-10.0)
+
         aoa_penalty = torch.zeros_like(aoa)
 
-        # Take absolute value of AoA because negative AoA (pushing the nose down) also has limits
-        abs_aoa = torch.abs(aoa)
-        violation_mask = abs_aoa > self.aoa_warning_rad
+        # 1. Positive AoA Penalty (Pulling up)
+        pos_mask = aoa > pos_warning
+        if pos_mask.any():
+            aoa_penalty[pos_mask] = -5.0 * ((aoa[pos_mask] - pos_warning) / (pos_max - pos_warning))**2
 
-        # Quadratic penalty that scales up sharply as it reaches the stall limit
-        # At 15 deg, penalty is 0.0. At 25 deg, penalty is -5.0.
-        if violation_mask.any():
-            aoa_penalty[violation_mask] = -5.0 * ((abs_aoa[violation_mask] - self.aoa_warning_rad) / (self.aoa_max_rad - self.aoa_warning_rad))**2
+        # 2. Negative AoA Penalty (Pushing down)
+        neg_mask = aoa < neg_warning
+        if neg_mask.any():
+            # Note: order of subtraction flipped to keep the fraction positive before squaring
+            aoa_penalty[neg_mask] = -5.0 * ((aoa[neg_mask] - neg_warning) / (neg_max - neg_warning))**2
 
         # Because tracking_reward is [-1.0, 0.0], we add a flat +1.0.
         # This shifts the base tracking step reward to [0.0, +1.0].

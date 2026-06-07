@@ -9,26 +9,25 @@ from utils.utils import wrap_PI
 
 class PositionReward(BaseRewardFunction):
     """
-    Measure the difference between the current position and the target position
+    Rewards the agent for proximity to the target using a bounded exponential curve.
+    At 0km distance, reward is +1.0. As distance increases, reward smoothly approaches 0.0.
     """
     def __init__(self, config):
         super().__init__(config)
 
     def get_reward(self, task, env):
-        """
-        Args:
-            task: task instance
-            env: environment instance
-
-        Returns:
-            (tensor): reward
-        """
         npos, epos, altitude = env.model.get_position()
-        delta_npos = (npos - task.target_npos) * 0.3048 / 1000
-        delta_epos = (epos - task.target_epos) * 0.3048 / 1000
-        delta_altitude = (altitude - task.target_altitude) * 0.3048 / 1000
-        reward_npos = -delta_npos ** 2
-        reward_epos = -delta_epos ** 2
-        reward_altitude = -delta_altitude ** 2
-        reward_target = reward_npos + reward_epos + reward_altitude
-        return 0.1 * reward_target
+
+        # Calculate deltas in raw units, convert to kilometers
+        delta_n = (npos - task.target_npos) * 0.3048 / 1000.0
+        delta_e = (epos - task.target_epos) * 0.3048 / 1000.0
+        delta_alt = (altitude - task.target_altitude) * 0.3048 / 1000.0
+
+        # True 3D Euclidean distance in km
+        dist_km = torch.sqrt(delta_n**2 + delta_e**2 + delta_alt**2)
+
+        # Exponential decay: hyperparameter '2.0' dictates how wide the reward radius is.
+        # A higher denominator makes the reward drop off slower, guiding the agent from further away.
+        reward_target = torch.exp(-dist_km / 2.0)
+
+        return reward_target

@@ -6,23 +6,19 @@ from reward_function_base import BaseRewardFunction
 
 class TimeDrivenReward(BaseRewardFunction):
     """
-    TimeDrivenReward
-    Gives the agent a small positive reward for every step it takes, encouraging it to survive longer.
+    Applies a small, constant time penalty to prevent 'loitering' or circling.
+    The agent is incentivized to minimize flight time to the target.
     """
     def __init__(self, config):
         super().__init__(config)
-
-        self.reward = 0.4
+        # Small negative penalty per step
+        self.step_penalty = -0.05
 
     def get_reward(self, task, env):
-        """
-        Reward is a small positive value for each step taken.
+        is_done = env.is_done.bool()
+        bad_done = env.bad_done.bool()
 
-        Args:
-            task: task instance
-            env: environment instance
+        # Apply penalty only if the episode is still actively running
+        active_mask = ~(is_done | bad_done)
 
-        Returns:
-            (tensor): reward
-        """
-        return self.reward * ~(env.is_done | env.bad_done)
+        return self.step_penalty * active_mask.float()
