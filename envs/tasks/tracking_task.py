@@ -111,7 +111,6 @@ class TrackingTask(BaseTask):
         el, ail, rud, lef = env.model.get_control_surface()
         eas2tas = env.model.get_EAS2TAS()
 
-        # ---------------- NEW EGO-RELATIVE NAVIGATION ----------------
         delta_n = self.target_npos - npos
         delta_e = self.target_epos - epos
         delta_alt = self.target_altitude - altitude

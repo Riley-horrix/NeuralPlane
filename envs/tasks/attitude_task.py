@@ -92,7 +92,8 @@ class AttitudeTask(BaseTask):
         P, Q, R = env.model.get_angular_velocity()
 
         # Unpack all 4 control surface signals from the underlying F-16 flight engine
-        el, ail, rud, thr = env.model.get_control_surface()
+        el, ail, rud, lef = env.model.get_control_surface()
+        thr = env.model.get_thrust()
         vt = env.model.get_vt()
 
         # Calculate tracking states
@@ -113,7 +114,7 @@ class AttitudeTask(BaseTask):
         norm_el = el.reshape(-1, 1) / 45.0
         norm_ail = ail.reshape(-1, 1) / 45.0
         norm_rud = rud.reshape(-1, 1) / 45.0
-        norm_thr = (thr.reshape(-1, 1) * 2.0) - 1.0  # Maps raw [0.0, 1.0] throttle to [-1.0, 1.0]
+        norm_thr = thr.reshape(-1, 1) / (0.225 * 76300 / 0.3048)
 
         # Kinematic dampening tracking states
         norm_P = P.reshape(-1, 1)
